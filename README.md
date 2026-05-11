@@ -10,10 +10,11 @@
 
 ## Proposed Method
 
-**A<sup>3</sup> (Action Advantage Assignment)**  
-Native CLI-agent attributes for agentic RL.  
-Structured CLI code credit for policy optimization.  
-Episode, turn, and trajectory-tree advantages from executable shell actions.
+**A<sup>3</sup> (Action Advantage Assignment)**
+
+- Native CLI-agent attributes for agentic RL
+- Structured CLI code credit for policy optimization
+- Episode, turn, and trajectory-tree advantages from executable shell actions
 
 <p align="center">
   <img src="assets/Figs/a3_overview.png" width="95%" alt="A3 overview">
