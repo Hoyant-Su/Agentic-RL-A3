@@ -1,0 +1,161 @@
+settings:
+  algo: "A3_algo"
+  enable_A3_algo: 1
+  # bench: ["agentbench_os", "databench", "shellops", "ehrcon_curated", "agentbench_dbbench", "tablebench"]
+  bench: ["agentbench_os", "databench", "shellops", "agentbench_dbbench", "tablebench"]
+  # bench: ["shellops_pro"]
+  bash_coding_enable: 1
+  disable_qwen_thinking: 1
+  enable_pretrained_eval_only: 0
+  enable_fast_infer_only: 1
+  enable_mid_val: 0
+  enable_memory_saver: 0
+  disable_cuda_graph: 0
+  cuda_graph_max_bs: 16
+  sglang_ci_small_kv_size: 16384
+  sglang_is_flashinfer_available: "true"
+  resume_for_training: ""
+  resume_for_inference: ""
+
+data:
+  train_batch_size: 16
+  val_batch_size: 16
+  micro_batch_size: 2
+  mini_batch_size: 16
+  max_prompt_len_value: 32768
+
+model:
+  checkpoint_pair: ""
+  pretrained_model_path_default: "Qwen/Qwen3-14B"
+  sglang_attn_backend: "triton"
+
+hyperparam:
+  group_size: 4
+  algo_turn_weight: 0.70
+  algo_epsilon: 1e-6
+  algo_adv_bound: 1.1
+  algo_trie_min_count: 2
+  algo_trie_edge_max_tokens: 0
+  # v7 deltas vs v0 (paper algorithm unchanged):
+  #   - algo_w_trie            0.50  -> 0.65 : raise multi-scale intent residual share from 16.7% to 24.5%
+  #   - algo_w_action_cluster  1.5   -> 1.0  : tree gates fire only ~7% of steps in v0 (mean tree_gate=0.07)
+  #                                            and the rare fires carry full 1.5 weight, producing rare advantage
+  #                                            spikes. Lowering nominal weight dampens those spikes and brings
+  #                                            post-tanh max from 1.092 (v0) to 1.082 with no signal loss in
+  #                                            the 93% no-fire regime.
+  algo_w_trie: 0.65
+  algo_support_prior: 0.1
+  algo_decision_gamma: 0.9
+  algo_w_action_cluster: 1.0
+  algo_intent_scopes: [1, 2, 3, -1]
+  algo_w_intent_scopes: [0.25, 0.25, 0.25, 0.25]
+  algo_A3_algo_tree_intent_match_tau: 0.05
+  algo_A3_algo_tree_bucket_time_decay: 0.84
+  compute_mean_std_cross_steps: false
+  val_rollout_n: 5
+  val_do_sample: 1
+  val_temperature: 1.0
+  val_top_p: 1.0
+  val_top_k: -1
+  rollout_mem_util: 0.45
+  trainer_total_epochs: 3
+  rollout_gpu_memory_utilization: 0.7
+  rollout_mem_fraction_static: 0.7
+  actor_lr: 5e-7
+  # v7 anti-drift: actor_kl_loss_coef 0.005 -> 0.010 . Diagnostic shows ppo_kl
+  # max=0.008 in v0 vs target_kl=0.01, so KL budget has 20% headroom. Doubling
+  # actor-side KL regularization compresses the late-stage gradient drift seen
+  # in the 35% reward decay between v0's step ~110 peak and step 147 tail.
+  actor_kl_loss_coef: 0.010
+  # v7 trust-region tightening (verl framework defaults: clip_ratio=0.2, grad_clip=1.0).
+  # actor/grad_norm in v0 trends upward late while reward decays, indicating noisy
+  # gradient amplification rather than KL violation. Halve both knobs:
+  #   - actor_clip_ratio  0.2 -> 0.1 : tighter PPO trust region, smaller per-update
+  #                                    policy delta, suppresses oscillation amplitude
+  #   - actor_grad_clip   1.0 -> 0.5 : direct cap on gradient norm, prevents the
+  #                                    rare tree_component spikes (7% fire rate)
+  #                                    from translating into large parameter steps
+  actor_clip_ratio: 0.1
+  actor_grad_clip: 0.5
+  use_kl_in_reward: 0
+  kl_penalty: "low_var_kl"
+  kl_ctrl_type: "adaptive"
+  kl_ctrl_kl_coef: 0.02
+  kl_ctrl_horizon: 2000
+  kl_ctrl_target_kl: 0.01
+  invalid_action_penalty_coef: 0.0
+  gamma: 0.99
+  save_count: 1
+  env_seed: 0
+
+env:
+  env_max_steps: 6
+  no_progress_on_answer: 1
+  timeout: 10
+  execute_commands: 1
+  exec_backend: "sandbox"
+  bash_coding_harness: "sigma_reveal_rd" ## vanilla, sigma_reveal_rd (σ-Reveal)
+
+reward:
+  use_model_evidence_gain: 0
+  progress_gain_coef: 0.2
+  answer_reward: 3.0
+  exec_error_penalty: 0.0
+
+
+  rstar_enable: 0
+  rstar_reject_equal_reward: 1
+  rstar_roc_error_ratio: 1
+  rstar_roc_answer_format: 1
+  rstar_min_zero_reward_trace_num: 2
+  rstar_min_non_zero_reward_trace_num: 2
+  rstar_downsample_to_n: 4
+
+  retroagent_enable: 0
+  retroagent_top_k: 3
+  retroagent_store_threshold: 1.0
+  retroagent_numerical_reward_coef: 0.2
+  retroagent_language_reward_coef: 0.1
+  retroagent_similarity_threshold: 0.2
+  retroagent_max_memory_per_task: 16
+  retroagent_reflection_max_tokens: 128
+  retroagent_memory_path: "main_entry/cli_agent_bash_coding/baseline_methods/retroagent_lite/memory_store.json"
+  retroagent_retrieval_type: "ucb"
+  retroagent_retrieve_mode: "both"
+  retroagent_alpha: 0.6
+  retroagent_beta: 0.05
+  retroagent_temperature: 0.5
+  retroagent_ucb_scale: 1.0
+  retroagent_embedding_model_path: "sentence-transformers/all-MiniLM-L6-v2"
+  retroagent_reflection_max_prompt_tokens: 12000
+  retroagent_reflection_hard_truncate_tokens: 16000
+  retroagent_reflection_keep_last_k_steps: 3
+  retroagent_reflection_max_obs_chars_per_step: 512
+  retroagent_reflection_max_feedback_chars_per_step: 512
+  retroagent_reflection_max_changed_files: 8
+  retroagent_group_relative_intrinsic_rewards: 0
+  retroagent_potential_based_on_binary_success: 0
+  retroagent_full_group_memory: 0
+  retroagent_single_reflection_per_group: 0
+  retroagent_group_outperformance: 0
+
+  commit_credit_enable: 0
+  commit_credit_coef: 0.2
+  commit_credit_clip_value: 1.0
+
+trainer:
+  kl_oscillation_stop_enable: 1
+  kl_oscillation_stop_metric_key: "actor/ppo_kl"
+  kl_oscillation_stop_baseline_steps: 20
+  kl_oscillation_stop_window_size: 20
+  kl_oscillation_stop_ratio: 2.0
+  kl_oscillation_stop_patience: 1
+  kl_oscillation_stop_min_steps: 20
+  kl_oscillation_stop_range_only: 1
+
+output_constraint:
+  action_output_regex: "^\\{(?:.|\\n|\\r)*\\}$"
+  enable_regex_constraint: 0
+  regex_plan_len: 256
+  regex_code_Len: 192
+  regex_answer_len: 128

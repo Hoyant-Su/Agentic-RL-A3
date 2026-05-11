@@ -1,0 +1,263 @@
+from typing import Dict, Iterable, Optional, Type, Union
+from torch import nn
+from vllm.config import (
+    CacheConfig,
+    DecodingConfig,
+    DeviceConfig,
+    EngineConfig,
+    LoRAConfig,
+    MultiModalConfig,
+    ObservabilityConfig,
+    ParallelConfig,
+    PromptAdapterConfig,
+    SchedulerConfig,
+    SpeculativeConfig,
+)
+from vllm.core.scheduler import Scheduler
+from vllm.engine.llm_engine import LLMEngine, _load_generation_config_dict
+from vllm.engine.metrics import LoggingStatLogger, PrometheusStatLogger, StatLoggerBase
+from vllm.engine.output_processor.interfaces import SequenceGroupOutputProcessor
+from vllm.engine.output_processor.stop_checker import StopChecker
+from vllm.executor.executor_base import ExecutorBase
+from vllm.inputs import INPUT_REGISTRY
+from vllm.logger import init_logger
+from vllm.tracing import init_tracer
+from vllm.transformers_utils.detokenizer import Detokenizer
+from vllm.usage.usage_lib import UsageContext, is_usage_stats_enabled, usage_message
+from vllm.utils import Counter
+from vllm.version import __version__ as VLLM_VERSION
+from .arg_utils import EngineArgs
+from .config import LoadConfig, ModelConfig
+from .tokenizer import TokenizerGroup
+
+logger = init_logger(__name__)
+_LOCAL_LOGGING_INTERVAL_SEC = 5
+
+class LLMEngine(LLMEngine):
+
+    def __init__(
+        self,
+        model: Union[nn.Module, Dict],
+        tokenizer: nn.Module,
+        model_config: ModelConfig,
+        cache_config: CacheConfig,
+        parallel_config: ParallelConfig,
+        scheduler_config: SchedulerConfig,
+        device_config: DeviceConfig,
+        load_config: LoadConfig,
+        lora_config: Optional[LoRAConfig],
+        multimodal_config: Optional[MultiModalConfig],
+        speculative_config: Optional[SpeculativeConfig],
+        decoding_config: Optional[DecodingConfig],
+        observability_config: Optional[ObservabilityConfig],
+        prompt_adapter_config: Optional[PromptAdapterConfig],
+        executor_class: Type[ExecutorBase],
+        log_stats: bool,
+        usage_context: UsageContext = UsageContext.ENGINE_CONTEXT,
+        stat_loggers: Optional[Dict[str, StatLoggerBase]] = None,
+    ) -> None:
+        logger.info(
+            "Initializing an LLM engine (v%s) with config: "
+            "model=%r, speculative_config=%r, tokenizer=%r, "
+            "skip_tokenizer_init=%s, revision=%s, "
+            "rope_scaling=%r, rope_theta=%r, tokenizer_revision=%s, "
+            "trust_remote_code=%s, dtype=%s, max_seq_len=%d, "
+            "download_dir=%r, load_format=%s, tensor_parallel_size=%d, "
+            "pipeline_parallel_size=%d, "
+            "disable_custom_all_reduce=%s, quantization=%s, "
+            "enforce_eager=%s, kv_cache_dtype=%s, "
+            "quantization_param_path=%s, device_config=%s, "
+            "decoding_config=%r, observability_config=%r, "
+            "seed=%d, served_model_name=%s, use_v2_block_manager=%s, "
+            "enable_prefix_caching=%s)",
+            VLLM_VERSION,
+            model_config.model,
+            speculative_config,
+            model_config.tokenizer,
+            model_config.skip_tokenizer_init,
+            model_config.revision,
+            model_config.rope_scaling,
+            model_config.rope_theta,
+            model_config.tokenizer_revision,
+            model_config.trust_remote_code,
+            model_config.dtype,
+            model_config.max_model_len,
+            load_config.download_dir,
+            load_config.load_format,
+            parallel_config.tensor_parallel_size,
+            parallel_config.pipeline_parallel_size,
+            parallel_config.disable_custom_all_reduce,
+            model_config.quantization,
+            model_config.enforce_eager,
+            cache_config.cache_dtype,
+            model_config.quantization_param_path,
+            device_config.device,
+            decoding_config,
+            observability_config,
+            model_config.seed,
+            model_config.served_model_name,
+            scheduler_config.use_v2_block_manager,
+            cache_config.enable_prefix_caching,
+        )
+        self.model_config = model_config
+        self.cache_config = cache_config
+        self.lora_config = lora_config
+        self.multimodal_config = multimodal_config
+        self.parallel_config = parallel_config
+        self.scheduler_config = scheduler_config
+        self.device_config = device_config
+        self.speculative_config = speculative_config
+        self.load_config = load_config
+        self.decoding_config = decoding_config or DecodingConfig()
+        self.prompt_adapter_config = prompt_adapter_config
+        self.observability_config = observability_config or ObservabilityConfig()
+        self.log_stats = log_stats
+        if not self.model_config.skip_tokenizer_init:
+            self.tokenizer = self._init_tokenizer(tokenizer)
+            self.detokenizer = Detokenizer(self.tokenizer)
+        else:
+            self.tokenizer = None
+            self.detokenizer = None
+        self.seq_counter = Counter()
+        self.generation_config_fields = _load_generation_config_dict(model_config)
+        self.input_processor = INPUT_REGISTRY.create_input_processor(self.model_config)
+        self.model_executor = executor_class(
+            model=model,
+            model_config=model_config,
+            cache_config=cache_config,
+            parallel_config=parallel_config,
+            scheduler_config=scheduler_config,
+            device_config=device_config,
+            lora_config=lora_config,
+            multimodal_config=multimodal_config,
+            speculative_config=speculative_config,
+            load_config=load_config,
+            prompt_adapter_config=prompt_adapter_config,
+        )
+        if not self.model_config.embedding_mode:
+            self._initialize_kv_caches()
+        if is_usage_stats_enabled():
+            from vllm.model_executor.model_loader import get_architecture_class_name
+
+            usage_message.report_usage(
+                get_architecture_class_name(model_config),
+                usage_context,
+                extra_kvs={
+                    "dtype": str(model_config.dtype),
+                    "tensor_parallel_size": parallel_config.tensor_parallel_size,
+                    "block_size": cache_config.block_size,
+                    "gpu_memory_utilization": cache_config.gpu_memory_utilization,
+                    "quantization": model_config.quantization,
+                    "kv_cache_dtype": str(cache_config.cache_dtype),
+                    "enable_lora": bool(lora_config),
+                    "enable_prompt_adapter": bool(prompt_adapter_config),
+                    "enable_prefix_caching": cache_config.enable_prefix_caching,
+                    "enforce_eager": model_config.enforce_eager,
+                    "disable_custom_all_reduce": parallel_config.disable_custom_all_reduce,
+                },
+            )
+        if self.tokenizer:
+            self.tokenizer.ping()
+        self.scheduler = [
+            Scheduler(
+                scheduler_config,
+                cache_config,
+                lora_config,
+                parallel_config.pipeline_parallel_size,
+            )
+            for _ in range(parallel_config.pipeline_parallel_size)
+        ]
+        if self.log_stats:
+            if stat_loggers is not None:
+                self.stat_loggers = stat_loggers
+            else:
+                self.stat_loggers = {
+                    "logging": LoggingStatLogger(
+                        local_interval=_LOCAL_LOGGING_INTERVAL_SEC
+                    ),
+                    "prometheus": PrometheusStatLogger(
+                        local_interval=_LOCAL_LOGGING_INTERVAL_SEC,
+                        labels=dict(model_name=model_config.served_model_name),
+                        max_model_len=self.model_config.max_model_len,
+                    ),
+                }
+                self.stat_loggers["prometheus"].info("cache_config", self.cache_config)
+        self.tracer = None
+        if self.observability_config.otlp_traces_endpoint:
+            self.tracer = init_tracer(
+                "vllm.llm_engine", self.observability_config.otlp_traces_endpoint
+            )
+        self.output_processor = SequenceGroupOutputProcessor.create_output_processor(
+            self.scheduler_config,
+            self.detokenizer,
+            self.scheduler,
+            self.seq_counter,
+            self.get_tokenizer_for_seq,
+            stop_checker=StopChecker(
+                self.scheduler_config.max_model_len,
+                self.get_tokenizer_for_seq,
+            ),
+        )
+
+    def _init_tokenizer(self, tokenizer, **tokenizer_init_kwargs):
+        init_kwargs = dict(
+            enable_lora=bool(self.lora_config),
+            max_num_seqs=self.scheduler_config.max_num_seqs,
+            max_input_length=None,
+        )
+        init_kwargs.update(tokenizer_init_kwargs)
+        return TokenizerGroup(tokenizer, **init_kwargs)
+
+    def init_cache_engine(self):
+        self.model_executor.init_cache_engine()
+
+    def free_cache_engine(self):
+        self.model_executor.free_cache_engine()
+
+    @classmethod
+    def _get_executor_cls(cls, engine_config: EngineConfig) -> Type[ExecutorBase]:
+        assert engine_config.device_config.device_type == "cuda", (
+            "Currently, the vllm in verl only support running on GPU"
+        )
+        if engine_config.parallel_config.world_size == 1:
+            engine_config.load_config.load_format = "dummy_hf"
+        from .spmd_gpu_executor import SPMDGPUExecutor
+
+        executor_class = SPMDGPUExecutor
+        return executor_class
+
+    @classmethod
+    def from_engine_args(
+        cls,
+        model,
+        tokenizer,
+        engine_args: EngineArgs,
+        usage_context: UsageContext = UsageContext.ENGINE_CONTEXT,
+        stat_loggers: Optional[Dict[str, StatLoggerBase]] = None,
+    ) -> "LLMEngine":
+        engine_config = engine_args.create_engine_config()
+        executor_class = cls._get_executor_cls(engine_config)
+        assert engine_config.device_config.device_type == "cuda", (
+            "Currently, the vllm in verl only support running on GPU"
+        )
+        from .spmd_gpu_executor import SPMDGPUExecutor
+
+        executor_class = SPMDGPUExecutor
+        engine = cls(
+            model,
+            tokenizer,
+            **engine_config.to_dict(),
+            executor_class=executor_class,
+            log_stats=not engine_args.disable_log_stats,
+            usage_context=usage_context,
+            stat_loggers=stat_loggers,
+        )
+        return engine
+
+    def sync_model_weights(self, actor_weights: Iterable, load_format: str) -> None:
+        self.model_executor.sync_model_weights(
+            actor_weights=actor_weights, load_format=load_format
+        )
+
+    def offload_model_weights(self) -> None:
+        self.model_executor.offload_model_weights()

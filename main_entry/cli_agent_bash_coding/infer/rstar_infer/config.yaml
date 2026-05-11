@@ -1,0 +1,55 @@
+settings:
+  # bench: ["agentbench_os", "databench", "shellops", "ehrcon_curated", "agentbench_dbbench", "tablebench"]
+  bench: ["shellops_pro"]
+  backend: "local"
+  port: 30015
+  max_samples: 0
+  output_jsonl: ""
+
+infer:
+  batch_size: 16
+  rollout_n: 5
+  do_sample: 0
+  max_steps: 6
+  llm_timeout: 120
+  disable_qwen_thinking: 1
+  temperature: 1.0
+  top_p: 1.0
+  seed: 0
+  enable_regex_constraint: 1
+  resume_for_inference: ""
+
+# All rStar-aligned pure_infer options live ONLY under `rstar_infer` (single master switch: enable).
+# Code still accepts duplicate flat keys like rstar_infer_enable for backward compatibility; do not add them here.
+rstar_infer:
+  # Master: 1 = shared token budget, optional history JSON prefix, optional per-step tree branch (see infer_tree_search).
+  enable: 1
+  response_budget_tokens: 4608
+  inject_history_json_block: 0
+  history_action_max_chars: 800
+  history_obs_max_chars: 1500
+  stop_on_exhausted_budget: 1
+  # Same bash worker/API/JSONL as linear infer; K parallel LM samples per turn, replay history on fresh workers, pick best by step reward. Use infer.do_sample=1 for diversity.
+  infer_tree_search: 0
+  branch_k: 4
+  tree_budget_split: 1
+
+env:
+  env_max_steps: 7
+  timeout: 10
+  exec_backend: "sandbox"
+  execute_commands: 1
+  no_progress_on_answer: 1
+  bash_coding_harness: "vanilla" ##  sigma_reveal_rd
+
+reward:
+  use_model_evidence_gain: 0
+  progress_gain_coef: 0.2
+  answer_reward: 3.0
+  exec_error_penalty: 0
+  retroagent_enable: 0
+
+output_constraint:
+  regex_plan_len: 256
+  regex_code_len: 192
+  regex_answer_len: 128

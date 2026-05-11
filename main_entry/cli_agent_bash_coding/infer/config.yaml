@@ -1,0 +1,39 @@
+settings:
+  bench: ["agentbench_os", "databench", "shellops", "ehrcon_curated", "agentbench_dbbench", "tablebench"]
+  # bench: ["shellops_pro"]
+  backend: "local"
+  port: 30033
+  max_samples: 0
+  output_jsonl: ""
+
+infer:
+  batch_size: 16
+  rollout_n: 5
+  do_sample: 0
+  llm_timeout: 600
+  disable_qwen_thinking: 1
+  temperature: 1.0
+  top_p: 1.0
+  seed: 0
+  enable_regex_constraint: 1
+  resume_for_inference: ""
+
+env:
+  env_max_steps: 6
+  timeout: 10
+  exec_backend: "sandbox"
+  execute_commands: 1
+  no_progress_on_answer: 1
+  bash_coding_harness: "enhanced" ## agentic_diagnostic, enhanced, sigma_reveal_rd
+
+reward:
+  use_model_evidence_gain: 0
+  progress_gain_coef: 0.2
+  answer_reward: 3.0
+  exec_error_penalty: 0
+  retroagent_enable: 0
+
+output_constraint:
+  regex_plan_len: 256
+  regex_code_len: 192
+  regex_answer_len: 128

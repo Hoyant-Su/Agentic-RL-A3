@@ -1,0 +1,55 @@
+settings:
+  # bench: ["agentbench_os", "databench", "shellops", "ehrcon_curated", "agentbench_dbbench", "tablebench"]
+  bench: ["shellops_pro"]
+  backend: "local"
+  port: 30018
+  max_samples: 0
+  output_jsonl: ""
+
+infer:
+  batch_size: 16
+  rollout_n: 5
+  do_sample: 1
+  llm_timeout: 600
+  disable_qwen_thinking: 1
+  temperature: 1.0
+  top_p: 1.0
+  seed: 0
+  enable_regex_constraint: 1
+  resume_for_inference: ""
+
+# Language-Agent Tree Search style baseline at inference: expand n_generate_sample arms per env step,
+# run UCT iterations over fixed arms (depth=1), commit the arm with highest visit count.
+# Mutually exclusive with rstar_infer in practice: if both are enabled in YAML, lats_infer takes precedence in pure_infer.
+# Lite preset: 2 arms/step (~2x LLM vs linear); iterations only affect UCT bookkeeping after expand (no extra LLM calls).
+lats_infer:
+  enable: 1
+  iterations: 16
+  n_generate_sample: 2
+  exploration_weight: 1.0
+  max_depth: 1
+  response_budget_tokens: 0
+  stop_on_exhausted_budget: 1
+  tree_budget_split: 1
+  expand_max_workers: 16
+  history_raw_prefix_chars: 512
+
+env:
+  env_max_steps: 10
+  timeout: 10
+  exec_backend: "sandbox"
+  execute_commands: 1
+  no_progress_on_answer: 1
+  bash_coding_harness: "vanilla" ## sigma_reveal_rd
+
+reward:
+  use_model_evidence_gain: 0
+  progress_gain_coef: 0.2
+  answer_reward: 3.0
+  exec_error_penalty: 0
+  retroagent_enable: 0
+
+output_constraint:
+  regex_plan_len: 256
+  regex_code_len: 192
+  regex_answer_len: 128
