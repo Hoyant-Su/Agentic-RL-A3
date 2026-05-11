@@ -104,6 +104,12 @@ Set `EVAL_WORKERS` to control evaluation parallelism.
 
 ---
 
+## Acknowledgements
+
+This repository builds on the code infrastructure of `verl` and `verl-agent`. We thank these projects for supporting open research in large-scale reinforcement learning and agentic training.
+
+---
+
 ## Citation
 
 ```bibtex
