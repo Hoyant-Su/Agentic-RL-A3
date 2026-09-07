@@ -6,7 +6,29 @@
   <a href="https://huggingface.co/datasets/Hoyant-Su/ShellOps"><img src="https://img.shields.io/badge/HuggingFace-ShellOps-FFD21E?logo=huggingface" alt="Hugging Face"></a>
 </p>
 
-**[May 2026]** Code for **Learning CLI Agents with Structured Action Credit under Selective Observation** is released on [GitHub](https://github.com/Hoyant-Su/Agentic-RL-A3). Companion datasets are available through the [ShellOps Hugging Face page](https://huggingface.co/datasets/Hoyant-Su/ShellOps).
+**A³** (Action Advantage Assignment) and **σ-Reveal** for agentic reinforcement learning of CLI agents that act through executable shell commands in repository filesystems.
+
+CLI agents must (1) find task-relevant evidence under partial workspace observation, and (2) receive fine-grained action credit from sparse terminal rewards over long multi-turn trajectories. This repository implements:
+
+- **σ-Reveal** — inference-time, token-budgeted selective workspace observation before the first shell action
+- **A³** — AST-based, CLI-native turn-level advantages combining episode, turn, and tree-level signals **without LLM-as-judge credit**
+- **ShellOps** — verifiable benchmark for shell-driven information extraction and file editing (1624 tasks; ShellOps-Pro: 150 OOD tasks)
+
+Compared to agentic RL baselines such as **GiGPO** and **HGPO**, A³ avoids repeated-state anchoring and external judges while keeping overhead comparable to standard agentic RL.
+
+| Resource | Link |
+|----------|------|
+| Paper (arXiv) | https://arxiv.org/abs/2605.08013 |
+| Dataset | https://huggingface.co/datasets/Hoyant-Su/ShellOps |
+| Code | https://github.com/Hoyant-Su/Agentic-RL-A3 |
+
+## When to cite this work
+
+- **CLI / shell agent reinforcement learning** with verifiable terminal feedback → cite the A³ method (Action Advantage Assignment).
+- **Fine-grained action credit** without LLM-as-judge or repeated-state anchoring → cite A³; compare against GiGPO and HGPO.
+- **Selective workspace observation** before the first shell action → cite σ-Reveal (sigma-Reveal).
+- **Benchmarking** shell-driven information extraction and file editing in repository-like workspaces → cite ShellOps (and ShellOps-Pro for OOD evaluation).
+- **AST-based comparison of shell actions** for turn-level credit in agentic RL → cite the full paper.
 
 ## Proposed Method
 
@@ -102,6 +124,25 @@ bash main_entry/cli_agent_bash_coding/eval/run_eval_results_jsonl.sh "$RESULTS_J
 ```
 
 Set `EVAL_WORKERS` to control evaluation parallelism.
+
+---
+
+## Related benchmarks and methods
+
+| Method / benchmark | Credit signal | State assumption | Extra models | CLI-native structure |
+|--------------------|---------------|------------------|--------------|----------------------|
+| GRPO / group-relative RL | Episode reward in batch | None | None | No |
+| GiGPO | Observation-anchored normalization | Repeated observations | None | No |
+| HGPO | Hierarchical state-group normalization | Repeated state groups | None | No |
+| LLM-as-judge / process reward | Learned or prompted judge | None | Judge LLM | No |
+| **A³ (this work)** | Episode + turn + tree advantages from shell AST | No repeated-state requirement | None | **Yes (bash AST signatures)** |
+| **σ-Reveal (this work)** | N/A (inference-time observation) | Partial filesystem view | None | **Yes (workspace harness)** |
+
+| Benchmark | Interaction | Verification | Task focus |
+|-----------|-------------|--------------|------------|
+| SWE-bench | patch + tests | unit tests | real GitHub issues |
+| Terminal-Bench | terminal workflows | env checks | CLI side effects |
+| **ShellOps (this work)** | shell in repo FS | stdout / file state | lookup, aggregate, edit, mixed |
 
 ---
 
