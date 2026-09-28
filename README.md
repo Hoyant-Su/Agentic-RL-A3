@@ -1,10 +1,15 @@
 # Learning CLI Agents with Structured Action Credit under Selective Observation
 
 <p align="center">
+  <a href="https://hoyant-su.github.io/agentic-rl-a3-project/"><img src="https://img.shields.io/badge/Project-Homepage-176f63" alt="Project Homepage"></a>
   <a href="https://arxiv.org/abs/2605.08013"><img src="https://img.shields.io/badge/arXiv-2605.08013-b31b1b.svg" alt="arXiv"></a>
   <a href="https://github.com/Hoyant-Su/Agentic-RL-A3"><img src="https://img.shields.io/badge/GitHub-Agentic--RL--A3-181717?logo=github" alt="GitHub"></a>
   <a href="https://huggingface.co/datasets/Hoyant-Su/ShellOps"><img src="https://img.shields.io/badge/HuggingFace-ShellOps-FFD21E?logo=huggingface" alt="Hugging Face"></a>
 </p>
+
+## What's new
+
+**[September 2026]** Our [project homepage](https://hoyant-su.github.io/agentic-rl-a3-project/) is now live on GitHub Pages.
 
 **[September 2026]** 🎉 Our paper **Learning CLI Agents with Structured Action Credit under Selective Observation** has been accepted to **NeurIPS 2026**!
 
