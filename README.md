@@ -106,9 +106,9 @@ bash launch_bash_coding.sh
 
 Run the released [A3-Qwen3-14B](https://huggingface.co/Hoyant-Su/A3-Qwen3-14B) policy on two ShellOps tasks with **seed 42**. The demo supports both the **vanilla** and **$\sigma$-Reveal** harnesses, using the same model weights and a six-turn budget.
 
-[![A3 ShellOps demo: agent actions, environment outputs, and workspace changes](demo/preview.png)](demo/a3_shellops_demo.mp4)
+https://github.com/user-attachments/assets/a69f9e62-55b8-45c3-9720-0cdb2ace67d7
 
-[Watch the recorded demo](demo/a3_shellops_demo.mp4) (MP4, 2 min 26 sec). The recording follows each task from its initial workspace through the agent's commands, execution outputs, and file changes to task completion. Playback is paced for readability and does not represent inference latency. For interactive playback, open `demo/replay.html` locally in a browser.
+Recorded walkthrough (2 min 26 sec). The recording follows each task from its initial workspace through the agent's commands, execution outputs, and file changes to task completion. Playback is paced for readability and does not represent inference latency. For interactive playback, open `demo/replay.html` locally in a browser.
 
 After completing [Quick Start](#quick-start), run the following from the repository root on Linux with a CUDA GPU:
 
