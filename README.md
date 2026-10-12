@@ -5,9 +5,12 @@
   <a href="https://arxiv.org/abs/2605.08013"><img src="https://img.shields.io/badge/arXiv-2605.08013-b31b1b.svg" alt="arXiv"></a>
   <a href="https://github.com/Hoyant-Su/Agentic-RL-A3"><img src="https://img.shields.io/badge/GitHub-Agentic--RL--A3-181717?logo=github" alt="GitHub"></a>
   <a href="https://huggingface.co/datasets/Hoyant-Su/ShellOps"><img src="https://img.shields.io/badge/HuggingFace-ShellOps-FFD21E?logo=huggingface" alt="Hugging Face"></a>
+  <a href="https://huggingface.co/Hoyant-Su/A3-Qwen3-14B"><img src="https://img.shields.io/badge/Model%20(Checkpoint)-A3--Qwen3--14B-A7472D?logo=huggingface" alt="Model (Checkpoint): A3-Qwen3-14B"></a>
 </p>
 
 ## What's new
+
+**[October 2026]** We release the [A3-trained Qwen3-14B weights](https://huggingface.co/Hoyant-Su/A3-Qwen3-14B) and an [end-to-end ShellOps demo](#demo), with a recorded walkthrough and instructions for running both the vanilla and $\sigma$-Reveal harnesses.
 
 **[September 2026]** Our [project homepage](https://hoyant-su.github.io/agentic-rl-a3-project/) is now live on GitHub Pages.
 
@@ -96,6 +99,28 @@ Then run:
 cd main_entry/cli_agent_bash_coding/train/A3_algo
 bash launch_bash_coding.sh
 ```
+
+---
+
+## Demo
+
+Run the released [A3-Qwen3-14B](https://huggingface.co/Hoyant-Su/A3-Qwen3-14B) policy on two ShellOps tasks with **seed 42**. The demo supports both the **vanilla** and **$\sigma$-Reveal** harnesses, using the same model weights and a six-turn budget.
+
+[![A3 ShellOps demo: agent actions, environment outputs, and workspace changes](demo/preview.png)](demo/a3_shellops_demo.mp4)
+
+[Watch the recorded demo](demo/a3_shellops_demo.mp4) (MP4, 2 min 26 sec). The recording follows each task from its initial workspace through the agent's commands, execution outputs, and file changes to task completion. Playback is paced for readability and does not represent inference latency. For interactive playback, open `demo/replay.html` locally in a browser.
+
+After completing [Quick Start](#quick-start), run the following from the repository root on Linux with a CUDA GPU:
+
+```bash
+python -m pip install -r demo/requirements.txt
+hf download Hoyant-Su/A3-Qwen3-14B --local-dir outputs/models/A3-Qwen3-14B
+bash demo/run.sh --model outputs/models/A3-Qwen3-14B --harness both
+```
+
+The runner downloads the selected ShellOps task assets automatically and writes the trajectories and results to `outputs/demo/`. To run one harness, replace `--harness both` with `--harness vanilla` or `--harness sigma_reveal_rd`. When repeating a run, choose a fresh output directory with `--output-dir`.
+
+The recorded runs were validated on an NVIDIA H100 80 GB GPU with BF16 weights and greedy decoding. Both tasks produce the requested files correctly in both harnesses; these examples illustrate agent behavior and are not a reproduction of the full benchmark evaluation. See [demo/config.yaml](demo/config.yaml) for the exact settings and [demo/example_outputs](demo/example_outputs) for the saved trajectories.
 
 ---
 

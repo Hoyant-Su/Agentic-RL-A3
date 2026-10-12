@@ -1,0 +1,38 @@
+seed: 42
+dataset:
+  repo_id: Hoyant-Su/ShellOps
+  revision: 297241f2396fac3e7d93e770a5d5b733b445d0d1
+  parquet: shellops/test.parquet
+  # Two successful demonstration tasks, not a benchmark evaluation subset.
+  sample_ids:
+    - ShellOps_7d8e536b30
+    - ShellOps_bddbccaf50
+model:
+  dtype: bfloat16
+  attention: eager
+  max_prompt_tokens: 32768
+  enable_thinking: false
+generation:
+  do_sample: false
+  num_beams: 1
+  max_new_tokens: 576
+  repetition_penalty: 1.0
+env:
+  max_steps: 6
+  history_length: 6
+  timeout: 10
+  exec_backend: sandbox
+  execute_commands: true
+  no_progress_on_answer: true
+  require_answer_for_done: true
+  max_output_chars: 2000
+  max_diff_chars: 1500
+  max_fs_diff_lines: 50
+  max_created_preview_lines: 20
+  unified_diff_context_lines: 2
+reward:
+  use_model_evidence_gain: 0
+  progress_gain_coef: 0.2
+  answer_reward: 3.0
+  exec_error_penalty: 0.0
+  retroagent_enable: 0

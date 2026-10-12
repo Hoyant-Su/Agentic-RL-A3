@@ -1,0 +1,26 @@
+{
+  "vanilla": [
+    {
+      "sample_id": "ShellOps_7d8e536b30",
+      "turns": 3,
+      "success": true
+    },
+    {
+      "sample_id": "ShellOps_bddbccaf50",
+      "turns": 3,
+      "success": true
+    }
+  ],
+  "sigma_reveal_rd": [
+    {
+      "sample_id": "ShellOps_7d8e536b30",
+      "turns": 3,
+      "success": true
+    },
+    {
+      "sample_id": "ShellOps_bddbccaf50",
+      "turns": 4,
+      "success": true
+    }
+  ]
+}
